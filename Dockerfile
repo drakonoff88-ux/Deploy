@@ -5,30 +5,21 @@ RUN apt-get update && apt-get install -y \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Установка Poetry
-RUN pip install poetry
-
-# Отключение создания виртуального окружения внутри Docker
-RUN poetry config virtualenvs.create false
-
 WORKDIR /app
 
 # Копирование файлов зависимостей
-COPY pyproject.toml poetry.lock* ./
+COPY requirements.txt .
 
-# Установка зависимостей через Poetry
-RUN poetry install --no-dev
+# Установка зависимостей через pip
+RUN pip install -r requirements.txt
 
 # Копирование исходного кода
 COPY mysite/ ./mysite/
 
 WORKDIR /app/mysite
 
-# Сбор статики (если нужно)
-RUN python manage.py collectstatic --noinput
-
 # Открытие порта
 EXPOSE 8000
 
-# Запуск приложения
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+# Запуск приложения с collectstatic при старте
+CMD ["sh", "-c", "python manage.py collectstatic --noinput && python manage.py runserver 0.0.0.0:8000"]

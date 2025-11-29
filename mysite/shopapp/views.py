@@ -10,78 +10,10 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
-from rest_framework.parsers import MultiPartParser
-from rest_framework.request import Request
-from rest_framework.response import Response
-from rest_framework.filters import SearchFilter, OrderingFilter
-from rest_framework.viewsets import ModelViewSet
-from rest_framework.decorators import action
-from django_filters.rest_framework import DjangoFilterBackend
 
 from .common import save_csv_products
 from .forms import ProductForm
 from .models import Product, Order, ProductImage
-from .serializers import ProductSerializer, OrderSerializer
-
-
-class ProductViewSet(ModelViewSet):
-    queryset = Product.objects.all()
-    serializer_class = ProductSerializer
-    filter_backends = [
-        SearchFilter,
-        DjangoFilterBackend,
-        OrderingFilter,
-    ]
-    search_fields = ["name", "description"]
-    filterset_fields = [
-        "name",
-        "description",
-        "price",
-        "discount",
-        "archived",
-    ]
-    ordering_fields = [
-        "name",
-        "price",
-        "discount",
-    ]
-
-    @action(methods=["get"], detail=False)
-    def download_csv(self, request: Request):
-        response = HttpResponse(content_type="text/csv")
-        filename = "products-export.csv"
-        response["Content-Disposition"] = f"attachment; filename={filename}"
-        queryset = self.filter_queryset(self.get_queryset())
-        fields = [
-            "name",
-            "description",
-            "price",
-            "discount",
-        ]
-        queryset = queryset.only(*fields)
-        writer = DictWriter(response, fieldnames=fields)
-        writer.writeheader()
-
-        for product in queryset:
-            writer.writerow({
-                field: getattr(product, field)
-                for field in fields
-            })
-
-        return response
-
-    @action(
-        detail=False,
-        methods=["post"],
-        parser_classes=[MultiPartParser],
-    )
-    def upload_csv(self, request: Request):
-        products = save_csv_products(
-            request.FILES["file"].file,
-            encoding=request.encoding,
-        )
-        serializer = self.get_serializer(products, many=True)
-        return Response(serializer.data)
 
 
 class ShopIndexView(View):
@@ -118,7 +50,6 @@ class ProductCreateView(CreateView):
 
 class ProductUpdateView(UpdateView):
     model = Product
-    # fields = "name", "price", "description", "discount", "preview"
     template_name_suffix = "_update_form"
     form_class = ProductForm
 
@@ -135,7 +66,6 @@ class ProductUpdateView(UpdateView):
                 product=self.object,
                 image=image,
             )
-
         return response
 
 
@@ -151,6 +81,8 @@ class ProductDeleteView(DeleteView):
 
 
 class OrdersListView(LoginRequiredMixin, ListView):
+    template_name = "shopapp/order_list.html"
+    context_object_name = "orders"
     queryset = (
         Order.objects
         .select_related("user")
@@ -161,6 +93,8 @@ class OrdersListView(LoginRequiredMixin, ListView):
 
 class OrderDetailView(PermissionRequiredMixin, DetailView):
     permission_required = "shopapp.view_order"
+    template_name = "shopapp/order_detail.html"
+    context_object_name = "order"
     queryset = (
         Order.objects
         .select_related("user")
@@ -198,15 +132,32 @@ def export_user_orders(request, user_id):
     owner = get_object_or_404(User, id=user_id)
     orders = Order.objects.filter(user=owner).order_by('pk')
 
-    # Сериализуем данные
-    serializer = OrderSerializer(orders, many=True)
-    serialized_data = serializer.data
+    # Вручную создаем JSON данные (без сериализатора DRF)
+    orders_data = []
+    for order in orders:
+        order_data = {
+            'id': order.id,
+            'delivery_address': order.delivery_address,
+            'promocode': order.promocode,
+            'created_at': order.created_at.isoformat(),
+            'user': order.user.username,
+            'products': [
+                {
+                    'id': product.id,
+                    'name': product.name,
+                    'price': str(product.price)
+                }
+                for product in order.products.all()
+            ]
+        }
+        orders_data.append(order_data)
 
     # Сохраняем в кеш на 5 минут (300 секунд)
-    cache.set(cache_key, serialized_data, timeout=300)
+    cache.set(cache_key, orders_data, timeout=300)
 
     print(f"=== DATA SAVED TO CACHE for user {user_id} ===")
-    return JsonResponse(serialized_data, safe=False)
+    return JsonResponse(orders_data, safe=False)
+
 
 class ProductsDataExportView(View):
     def get(self, request: HttpRequest) -> JsonResponse:
@@ -215,7 +166,7 @@ class ProductsDataExportView(View):
             {
                 "pk": product.pk,
                 "name": product.name,
-                "price": product.price,
+                "price": str(product.price),
                 "archived": product.archived,
             }
             for product in products

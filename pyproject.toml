@@ -9,7 +9,8 @@ python = "^3.8"
 Django = "^4.2"
 Pillow = "^10.0.0"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
+# Здесь можно добавить dev-зависимости если нужно
 
 [build-system]
 requires = ["poetry-core"]

@@ -53,11 +53,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sitemaps',
-
-    'debug_toolbar',
-    'rest_framework',
-    'django_filters',
-
     'shopapp.apps.ShopappConfig',
     'myauth.apps.MyauthConfig',
     'blogapp.apps.BlogappConfig',
@@ -74,8 +69,8 @@ MIDDLEWARE = [
 ]
 
 # Добавляем Debug Toolbar только в режиме отладки
-if DEBUG:
-    MIDDLEWARE.append('debug_toolbar.middleware.DebugToolbarMiddleware')
+# if DEBUG:
+#     MIDDLEWARE.append('debug_toolbar.middleware.DebugToolbarMiddleware')
 
 ROOT_URLCONF = 'mysite.urls'
 
