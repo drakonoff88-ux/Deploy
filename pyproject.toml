@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "django-project"
+version = "0.1.0"
+description = "Django project with blog, shop and auth apps"
+authors = ["Your Name <your@email.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+Django = "^4.2"
+Pillow = "^10.0.0"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

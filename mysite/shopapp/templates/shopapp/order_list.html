@@ -1,0 +1,34 @@
+{% extends 'shopapp/base.html' %}
+
+{% block title %}
+  Заказы пользователя {{ owner.username }}
+{% endblock %}
+
+{% block body %}
+  <h1>Заказы пользователя {{ owner.username }}</h1>
+
+  {% if orders %}
+    <p>Пользователь {{ owner.username }} выполнил следующие заказы:</p>
+
+    {% load cache %}
+
+    <div>
+      {% cache 300 user_orders owner.id %}
+        <ul>
+          {% for order in orders %}
+            <li>
+              Заказ #{{ order.pk }} от {{ order.created_at|date:"d.m.Y H:i" }}
+            </li>
+          {% endfor %}
+        </ul>
+      {% endcache %}
+    </div>
+
+  {% else %}
+    <p>У пользователя {{ owner.username }} ещё нет заказов</p>
+  {% endif %}
+
+  <div>
+    <a href="{% url 'shopapp:orders_list' %}">Назад к списку всех заказов</a>
+  </div>
+{% endblock %}

@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_DEBUG=1
+      - PYTHONUNBUFFERED=1
+    restart: always
+    volumes:
+      - ./mysite/uploads:/app/mysite/uploads
+      - ./mysite/db.sqlite3:/app/mysite/db.sqlite3
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000"
